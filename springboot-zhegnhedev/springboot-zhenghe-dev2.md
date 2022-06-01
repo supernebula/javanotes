@@ -55,6 +55,67 @@ VO对象常用的xml注解
 @JacksonXmlText //标注属性，是否生成无元素包裹的普通文本，只能用于一个属性；
 ```
 
+示例：UserVo 对象序列化XML
+```java
+@Data
+@JacksonXmlRootElement(localName = "user-info")
+public class UserVo {
+
+    @JacksonXmlProperty(localName = "real-name", isAttribute = true)
+    private String realName;
+
+    @JacksonXmlProperty
+    private Integer age;
+
+    @JacksonXmlCData
+    private String remark;
+
+    //@JacksonXmlText
+    @JacksonXmlProperty
+    private String title;
+
+    @JacksonXmlElementWrapper(localName = "role-list")
+    @JacksonXmlProperty(localName = "role")
+    public List<RoleVo> roleList;
+}
+```
+
+```java
+@Data
+@JacksonXmlRootElement(localName = "role-info")
+public class RoleVo {
+
+    @JacksonXmlProperty
+    private String name;
+
+    @JacksonXmlProperty
+    private String code;
+}
+```
+
+序列化结果：
+```xml
+<user-info real-name="lisi">
+    <age>10</age>
+    <remark>
+        <![CDATA[备注信息￥%SDG]]>
+    </remark>
+    <title>经理</title>
+    <role-list>
+        <role>
+            <name>管理</name>
+            <code>admin</code>
+        </role>
+        <role>
+            <name>客服</name>
+            <code>service</code>
+        </role>
+    </role-list>
+</user-info>
+```
+
+
+
 3.2.2 自定义转换器
 
 （1）方式一，继承接口，然后Spring注入
