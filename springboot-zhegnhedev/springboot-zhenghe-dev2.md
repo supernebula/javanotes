@@ -23,13 +23,13 @@ public Object action(){}
 @RestController
 public class UserController{
     //指定返回json
-    @GetMappeing(value = "/user/getJson", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/user/getJson", produces = MediaType.APPLICATION_JSON_VALUE)
     public UserVo getJson(){
         ...
     }
 
 //指定返回xml
-        @GetMappeing(value = "/user/getXml", produces = MediaType.APPLICATION_XML_VALUE)
+        @GetMapping(value = "/user/getXml", produces = MediaType.APPLICATION_XML_VALUE)
     public UserVo getXml(){
         ...
     }
