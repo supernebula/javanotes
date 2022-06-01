@@ -28,12 +28,22 @@ public class UserController{
         ...
     }
 
-//指定返回xml
-        @GetMapping(value = "/user/getXml", produces = MediaType.APPLICATION_XML_VALUE)
+    //指定返回xml
+    @GetMapping(value = "/user/getXml", produces = MediaType.APPLICATION_XML_VALUE)
     public UserVo getXml(){
         ...
     }
+
+    //不指定格式，根据HTTP请求头，返回指定JSON或xml格式，添加如下2个请求头：
+    //Content-Type=application/xml
+    //Accept=application/xml
+    @GetMapping("/user/getObj")
+    public UserVo getObj(){
+        ...
+    }
 }
+
+
 ```
 
 注：默认返回XML会报错，需要添加xml解析工具类依赖：
