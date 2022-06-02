@@ -378,6 +378,37 @@ public class GlobalExeptionHandler{
 }
 ```
 
+## 3.7 静态资源访问
+
+### 3.7.1 默认静态资源访问
+
+SpringBoot默认静态资源访问路径，按优先级顺序：
+
+```path
+classpath:META-INF/resources    #Servlet 3.0不允许浏览器直接访问
+classpath:resources
+classpath:static
+classpath:public
+```
+
+### 3.7.2 自定义静态资源访问
+
+```prop
+#将所有资源重新定位到/resources/**
+spring.mvc.static-path-pattern=/resources/**
+```
+
+```prop
+#自定义静态资源访问路径，支持多个,逗号隔开. 自定义指定后，SpringBoot默认静态资源路径将不再起作用
+spring.resources.static-locations=classpath:/mystatic/**,classpath:/mypublic
+```
+
+注：继承WebMvcConfigrer目录可指定绝对目录
+
+
+
+
+
 
 
 
