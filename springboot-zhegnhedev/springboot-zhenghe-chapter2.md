@@ -1,6 +1,119 @@
 # Springboot整合开发实战 ：第1篇SpringBoot开发基础
 # 第二章 SpringBoot基础知识
 
+## 1.2
+
+### 1.2.4 项目启动方式
+
+1. 在idea中运行main() ，会自动加载classpath下的配置文件
+
+2. 通过命令行 java -jar 启动
+
+命令格式：
+```shell
+java -jar jar_path --param
+例如：
+java -jar coachdemo.jar --server.port=8081
+```
+
+3. 通过spring-boot-plugin启动
+
+pom.xml文件添加如下
+```xml
+<project>
+...
+<build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+...
+</project>
+```
+以上准备后，可以再idea的Terminal终端执行如下命令：
+```shell
+mvn spring-boot:run
+```
+Ctrl + C 终止应用
+
+启动时添加参数:
+```shell
+mvn spring-boot:run -Dspring-boot.run.jvm-Arguments="-Dserver.port=8082"
+```
+
+启动时添加JVM参数：
+```shell
+mvn spring-boot:run -Dspring-boot.run.jvm-Arguments="-Dserver.port=8082 -Xms128m Xmx128m"
+```
+
+## 1.3 项目打包部署
+
+1.3.1 打包部署
+前置条件：确定pom.xml文件中添加了spring-boot-maven-plugin插件。有两种方式。
+（1）在idea的Maven Projects栏中，找到module的Lifecycle，双击package，等待创建成功。
+（2）在idea控制台中使用Maven命令打包，打包命令如下：
+```shell
+mvn clean package
+```
+打包时跳过测试类
+```shell
+mvn clean package -Dmaven.test.skip=true
+
+```
+
+打包后的jar包在moudle的target目录下。
+
+在linux上当前会话启动jar 或 后台启动
+```shell
+java -jar example.jar
+nohup java -jar example.jar &
+```
+
+1.3.2 基于Docker的简单部署
+
+编写Dockerfile 文件
+```prop
+# 基础镜像使用JAVA, 从docker17.05后FROM 命令可多次使用
+FROM java:8
+# 指定维护者信息
+MAINTAINER supernebula@gmail.com
+# 指定临时目录为/tmp
+VOLUME /tmp
+# 将jar包添加到docker容器中并更名为app.jar
+ADD example.jar app.jar
+# 运行jar包
+RUN bash -c 'touch /app.jar'
+# 声明服务运行在8080端口
+EXPOSE 8080
+# 指定docker容器启动时运行jar包
+ENTRYPOINT ["java", "-jar","/app.jar"， "-Djava-security.egd=file:/dev/./urandom","--spring.profiles.active=test","--server.port=8080","> /log/app.log"]
+
+```
+上传到服务,目录结构如下：
+--docker
+|---app.jar
+|---Dockerfile
+
+执行docker构建命令
+
+```shell
+docker build -t springboot-docker .
+```
+
+运行docker镜像为容器
+
+```shell
+docker run --name=myapp -d -p 8060:8080 springboot-docker
+```
+
+进入运行状态的容器
+```shell
+docker exec -it myapp bash
+```
+
 ## 2.1 Spring boot启动原理
 
 ## 2.2 Spring boot 基础配置
