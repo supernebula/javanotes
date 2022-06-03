@@ -180,41 +180,109 @@ Servlet3.0 @WebServlet、@WebFilter、@WebListener
 
 自定义Servlet
 ```java
-public class FirstServlet extends HttpServlet{
+public class FirstServlet extends HttpServlet {
+
+    //处理get请求
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        System.out.println("FirstServlet执行doGet");
+        doPost(req, resp);
+    }
+
+    //处理post请求
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        System.out.println("FirstServlet执行doPost");
+        PrintWriter out = resp.getWriter();
+        out.println("FirstServlet outer");
+    }
+
+    @Override
+    public void init(ServletConfig config) throws ServletException {
+        System.out.println("FirstServlet init");
+        super.init(config);
+    }
+
+    @Override
+    public void destroy(){
+        System.out.println("FirstServlet destroy");
+        super.destroy();
+    }
 }
 ```
 自定义Filter
 ```java
-public class FirstFilter implements Filter{
+public class FirstFilter implements Filter {
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        System.out.println("FirstFilter");
+        filterChain.doFilter(servletRequest, servletResponse);
+    }
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        System.out.println("FirstFilter init");
+    }
+
+    @Override
+    public void destroy() {
+        System.out.println("FirstFilter destroy");
+    }
 }
 ```
 
 自定义Listener
 ```java
-public class FirstListener implements ServletContextListener{
+public class FirstListenter implements ServletContextListener {
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        System.out.println("FirstListenter正在初始化");
+        System.out.println("servlet container:" + sce.getServletContext().getServerInfo());
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        System.out.println("FirstListenter正在销毁");
+    }
 }
 ```
 
 定义注册配置类
 ```java
 @Configuration
-public class WebConfig{
-    //代码注册Servlet(不需要@ServletComponent)
+public class WebConfig {
+
+    //使用代码注册Servlet （不使用@ServletComponentScan注解）
     @Bean
     public ServletRegistrationBean getFirstServlet(){
-        ...new statement
+        ServletRegistrationBean servRegBean = new ServletRegistrationBean();
+        servRegBean.setServlet(new FirstServlet());
+//        List<String> urlMappings = new ArrayList<>();
+//        urlMappings.add("/first");
+        servRegBean.addUrlMappings("/first", "/firstServlet");  //访问Url,可以添加多个
+        servRegBean.setLoadOnStartup(1); //设置加载顺序
+        return servRegBean;
     }
 
-    //注册拦截器
+    //注册过滤器
     @Bean
     public FilterRegistrationBean getFirstFilter(){
-        ...new statement
+        FilterRegistrationBean filterRegBean = new FilterRegistrationBean();
+        filterRegBean.setFilter(new FirstFilter());
+        List<String> urlPatterns = new ArrayList<>();
+        urlPatterns.add("/*"); //拦截路径，可以添加多个
+        filterRegBean.setUrlPatterns(urlPatterns);
+        filterRegBean.setOrder(1); //设置注册顺序
+        return filterRegBean;
     }
 
     //注册监听器
     @Bean
-    public ervletListenrRegistrationBean<ServletContextListener> gerFirstListener(){
-        ...new statement
+    public ServletListenerRegistrationBean<ServletContextListener> getFirstListener(){
+        ServletListenerRegistrationBean listenRegBean = new ServletListenerRegistrationBean();
+        listenRegBean.setListener(new FirstListenter());
+        listenRegBean.setOrder(1);
+        return listenRegBean;
     }
 }
 ```
@@ -226,59 +294,134 @@ public class WebConfig{
 自定义Servlet
 ```java
 @WebServlet(urlPatterns = "/second")
-public class SecondServlet extends HttpServlet{
+public class SecondServlet extends HttpServlet {
+
+    //处理get请求
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        System.out.println("SecondServlet 执行doGet");
+        doPost(req, resp);
+    }
+
+    //处理post请求
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        System.out.println("SecondServlet 执行doPost");
+        PrintWriter out = resp.getWriter();
+        out.println("SecondServlet outer");
+    }
+
+    @Override
+    public void init(ServletConfig config) throws ServletException {
+        System.out.println("SecondServlet init");
+        super.init(config);
+    }
+
+    @Override
+    public void destroy(){
+        System.out.println("SecondServlet destroy");
+        super.destroy();
+    }
 }
 ```
 自定义Filter
 ```java
-@WebFilter(filterName = "secondFilter", urlPatterns = "/")
-public class SecondFilter implements Filter{
+@WebFilter(filterName = "secondFilter", urlPatterns = "/**")
+public class SecondFilter implements Filter {
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        System.out.println("SecondFilter");
+        filterChain.doFilter(servletRequest, servletResponse);
+    }
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        System.out.println("SecondFilter init");
+    }
+
+    @Override
+    public void destroy() {
+        System.out.println("SecondFilter destroy");
+    }
 }
 ```
 
 自定义Listener
 ```java
 @WebListener
-public class SecondListener implements ServletContextListener{
+@WebListener
+public class SecondListenter implements ServletContextListener {
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        System.out.println("SecondListenter 正在初始化");
+        System.out.println("servlet container:" + sce.getServletContext().getServerInfo());
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        System.out.println("SecondListenter正在销毁");
+    }
 }
 ```
 
 修改启动类，添加@ServletComponentScan注解
 ```java
+@ServletComponentScan //启动时会扫描@WebServlet、@WebFilter和@WebListener注解，并创建该类的实例
 @SpringBootApplication
-@ServletComponentScan
-public class SpringbootServletApplication{
-    ...
+public class CaochDemoApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(CaochDemoApplication.class, args);
+    }
 }
 ```
 
 ## 3.4 配置拦截器
 
-拦截器主要用来拦截请求，咋请求执行前后进行某些操作（如入参校验和权限验证等）
+拦截器主要用来拦截请求，在请求执行前后进行某些操作（如入参校验和权限验证等）。SringBoot应用中可以存在多个不同的拦截器，根据声明顺序调用执行。
 
 ```java
-public MyHandlerInterceptor implements HandlerInterceptor{
-    
+public class FirstHandlerInterceptor implements HandlerInterceptor {
+
     //在执行处理程序（action）之前调用
     @Override
-    default boolean preHandle(req, resp){
-        ...
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        //默认返回true，如果返回false后续拦截器都会失效，但当前拦截器的afterCompletion会继续执行完。
+        System.out.println("FirstHandlerInterceptor 正在执行preHandle. 请求路径：" + request.getRequestURI());
+        return true;
     }
 
     //在执行处理程序（action）之后，但在呈现视图之前调用
     @Override
-    default void postHandle(req, resp){
-        ...
+    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, @Nullable ModelAndView modelAndView) throws Exception {
+        System.out.println("FirstHandlerInterceptor 正在执行postHandle. 请求路径：" + request.getRequestURI());
     }
 
     //在执行处理程序（action）之后，呈现试图之后回调
     @Override
-    default void afterCompletion(req, resp){
-        ...
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, @Nullable Exception ex) throws Exception {
+        System.out.println("FirstHandlerInterceptor 正在执行afterCompletion. 请求路径：" + request.getRequestURI());
     }
 }
 ```
-对于Spring MVC，最核心的类是DispatcherServlet，所有请求都会通过她分发处理
+
+```java
+/**
+ * 创建配置类，将拦截器注入容器
+ */
+@Configuration
+public class InterceptorConfig implements WebMvcConfigurer {
+
+    public void addInterceptors(InterceptorRegistry registry) {
+        FirstHandlerInterceptor firstHandlerInterceptor = new FirstHandlerInterceptor();
+        registry.addInterceptor(firstHandlerInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns("/free");
+        //SecondHandlerInterceptor secondHandlerInterceptor = new SecondHandlerInterceptor();
+        //registry.addInterceptor(secondHandlerInterceptor).addPathPatterns("/**");
+    }
+}
+```
+对于Spring MVC，最核心的类是DispatcherServlet，所有请求都会通过它分发处理。
 
 ## 3.5 配置AOP
 
