@@ -454,7 +454,110 @@ Around -> Before ->Around -> After -> AfterReturning
 
 定义多个Aspect后执行顺序不可预测，@Order 注解定义顺序
 
-@Pointcut 声明切入点
+@Pointcut 声明切入点，定义切入点的9中方法，execute表达式：
+
+```java
+@Pointcut("execution(public * com.evol.buniness.*.*(..))")
+```
+
+拦截任意公共方法
+```java
+@Pointcut("execution(public * *(..))")
+```
+拦截以set开头的任意方法
+```java
+@Pointcut("execution(* set*(..))")
+```
+
+拦截类AccountService或者接口中的方法
+```java
+@Pointcut("execution(* com.xyz.service.AccountService.*(..))")
+```
+
+拦截包中定义的方法，不包含子包中的方法
+```java
+@Pointcut("execution(* com.xyz.service.*.*(..))")
+```
+
+拦截包或者子包中定义的方法
+```java
+@Pointcut("execution(* com.xyz.service..*.*(..))")
+```
+
+[...更多](https://www.cnblogs.com/itsoku123/p/10744244.html)
+
+
+实战，为controller 定义切面
+
+定义注解类
+```java
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface Log {
+    //操作名称
+    String name() default "";
+}
+```
+
+定义切面类
+```java
+//定义切面，@Aspect使之成为切面类
+@Aspect
+@Component
+public class AopAspect {
+
+    //定义切入点，切入点为标com.evol.buniness包及其子包的，通过@Pointcut生命切入点表达式
+    //@Pointcut("execution(public * com.evol.buniness.*.*(..))")
+    //定义切入点，切入点为标有注解@Log的所有函数，通过@Pointcut生命切入点表达式
+    @Pointcut("@annotation(com.evol.aop.annotation.Log)")
+    public void LogAspect(){
+    }
+
+    //在连接点执行之前执行的通知
+    @Before("LogAspect()")
+    public void doBeforeLog(){
+        System.out.println("执行controller前置通知");
+    }
+
+    //使用环绕通知，注意该方法需要返回值
+    @Around("LogAspect()")
+    public Object doAroundLog(ProceedingJoinPoint pjp) throws  Throwable{
+        try{
+            System.out.println("开始执行contoller环绕通知");
+            Object obj = pjp.proceed();
+            System.out.println("结束执行controller环绕通知");
+            return obj;
+        }catch (Throwable e){
+            System.out.println("出现异常");
+            throw e;
+        }
+    }
+
+    //在连接点执行结束之后执行的通知
+    @After("LogAspect()")
+    public void doAfterLog(){
+        System.out.println("执行Controller后置结束通知");
+    }
+
+    //在连接点执行结束并返回之后执行的通知
+    @AfterReturning("LogAspect()")
+    public void doAfterReturnLog(JoinPoint joinPoint){
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Method method = signature.getMethod();
+        Log log = method.getAnnotation(Log.class);
+        String name = log.name();
+        System.out.println(name);
+        System.out.println("执行controller后置返回通知");
+    }
+
+    @AfterThrowing(pointcut = "LogAspect()", throwing = "e")
+    public void doAfterThrowingLog(JoinPoint joinPoint, Throwable e) {
+        System.out.println("=======异步通知开始======");
+        System.out.println("异步代码：" + e.getClass().getName());
+        System.out.println("异步信息：" + e.getMessage());
+    }
+}
+```
 
 ## 3.6 全局异常处理
 
@@ -516,9 +619,29 @@ public class GlobalExeptionHandler{
         //...new 
         return tObj;
     }
-
-
 }
+```
+
+```java
+@RestController
+public class TestController {
+        @Log(name = "访问/free接口")
+    @GetMapping("/free")
+    public String free(){
+        return "排查在拦截器Interceptor之外，不会被拦截";
+    }
+}
+```
+
+访问http://localhost:8085/free
+控制台打印日志如下：
+```log
+开始执行contoller环绕通知
+执行controller前置通知
+结束执行controller环绕通知
+执行Controller后置结束通知
+访问/free接口
+执行controller后置返回通知
 ```
 
 ## 3.7 静态资源访问
