@@ -349,7 +349,6 @@ public class SecondFilter implements Filter {
 自定义Listener
 ```java
 @WebListener
-@WebListener
 public class SecondListenter implements ServletContextListener {
     @Override
     public void contextInitialized(ServletContextEvent sce) {
@@ -559,69 +558,6 @@ public class AopAspect {
 }
 ```
 
-## 3.6 全局异常处理
-
-Spring Boot 默认通过BasicErrorController类定义的/error映射路径来处理异常信息
-
-### 3.6.1自定义错误页
-
-1. 方式一：
-
-创建文件resources\templates\error.html， 请求不存在，直接跳转到error.html
-
-2. 方式二：
-
-实现ErrorPageRegistrar接口，注册两个错误请求页面
-
-```java
-public class MyErrorPageRegistrar implements ErrorPageRegistrar{
-    @Override
-    public void registerErrorPages(ErrorPageRegistry errPagReg){
-        //page400指定路径 /400，page500指定路径 /500 
-        //，可以新建一个Controller的action分别映射 /400 和 /500
-        errPagReg.addErrorPages(page400, page500);
-    }
-}
-```
-
-新建配置类，生命Bean并注入容器；
-
-```java
-@Configuration
-public class ErrorCustomConfig{
-    @Bean
-    public ErrorPageRegistrar errorPageRegistrar(){
-        return new MyErrorPageRegistrar();
-    }
-}
-```
-
-### 3.6.2 自定义错误返回
-
-@ControllerAdvice开启全局异常处理
-@ExceptinoHandler 声明异常类型如何处理
-
-定义异常处理类
-```java
-@ControllerAdvice
-public class GlobalExeptionHandler{
-    //返回页面
-    @ExceptionHandler(RuntimeExeption.class)
-    public ModelAndView handle(RuntimeException e){
-        //...new ModelAndView
-        return modelAndView;
-    }
-
-    //返回SON
-    @ResponseBody
-    @ExceptionHandler(MyException.class)
-    public T handleMyException(MyException e){
-        //...new 
-        return tObj;
-    }
-}
-```
-
 ```java
 @RestController
 public class TestController {
@@ -643,6 +579,162 @@ public class TestController {
 访问/free接口
 执行controller后置返回通知
 ```
+
+## 3.6 全局异常处理
+
+Spring Boot 默认通过BasicErrorController类定义的/error映射路径来处理异常信息
+
+### 3.6.1自定义错误页
+
+1. 方式一：
+
+创建文件resources\templates\error.html， 请求不存在，直接跳转到error.html
+
+创建Controller
+```java
+@Controller
+public class ExTestController {
+    @GetMapping("/error")
+    public String error(){
+        return "error";
+    }
+}
+```
+
+2. 方式二：
+
+实现ErrorPageRegistrar接口，注册两个错误请求页面
+
+```java
+public class MyErrorPageRegistrar implements ErrorPageRegistrar{
+    @Override
+    public void registerErrorPages(ErrorPageRegistry errPagReg){
+        ErrorPage page400 = new ErrorPage(HttpStatus.BAD_REQUEST, "/400");
+        ErrorPage page500 = new ErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, "/500");
+        //page400指定路径 /400，page500指定路径 /500
+        //，可以新建一个Controller的action分别映射 /400 和 /500
+        errPagReg.addErrorPages(page400, page500);
+    }
+}
+```
+
+声明配置类，注入容器
+```java
+@Configuration
+public class ErrorCustomConfig {
+    @Bean
+    public ErrorPageRegistrar errorPageRegistrar(){
+        return new MyErrorPageRegistrar();
+    }
+}
+```
+创建测试方法，并请求
+```java
+@Controller
+public class ExTestController {
+    @GetMapping("/400")
+    public String error400(){
+        return "400";
+    }
+
+    @GetMapping("/500")
+    public String error500(){
+        return "500";
+    }
+
+    @GetMapping("/ex/index")
+    @ResponseBody
+    public String exIndex(){
+        int n =1 /0;
+        return "SUCCESS";
+    }
+}
+```
+
+请求 localhost:8085/ex/index
+返回500.html内容：“500 error页面”
+
+新建配置类，生命Bean并注入容器；
+
+```java
+@Configuration
+public class ErrorCustomConfig{
+    @Bean
+    public ErrorPageRegistrar errorPageRegistrar(){
+        return new MyErrorPageRegistrar();
+    }
+}
+```
+
+### 3.6.2 自定义错误返回
+
+@ControllerAdvice开启全局异常处理
+@ExceptinoHandler 声明异常类型如何处理
+
+定义异常处理类
+```java
+@ControllerAdvice
+public class GlobalExceptionHandler {
+    //返回错误页面
+    @ExceptionHandler(RuntimeException.class)
+    public ModelAndView handle(RuntimeException ex){
+        ModelAndView modelAndView = new ModelAndView();
+        modelAndView.setViewName("errorPage");
+        modelAndView.addObject("code", 500);
+        modelAndView.addObject("msg", ex.getMessage());
+        return modelAndView;
+    }
+
+    //返回JSON
+    @ResponseBody
+    @ExceptionHandler(MyException.class)
+    public Map<String, Object> handleMyException(MyException ex){
+        Map<String, Object> map = new HashMap<>();
+        map.put("code", 500);
+        map.put("message", ex.getMsg());
+        return map;
+    }
+}
+```
+
+定义异常类
+```java
+@Data
+public class MyException extends RuntimeException{
+    private int code;
+    private String msg;
+    public MyException(String msg){
+        super(msg);
+        this.code = 500;
+        this.msg = msg;
+    }
+}
+```
+
+定义测试Controller
+```java
+ @GetMapping("/excustom")
+    @ResponseBody
+    public String exCustom(){
+        throw new RuntimeException("excustom1");
+    }
+
+    @GetMapping("/excustomp")
+    public String exCustomPage(){
+        if(1 ==1 ){
+            throw new MyException("excustom1");
+        }
+        return "error";
+    }
+```
+
+分别访问如下url，测试完成
+http://localhost:8085/excustom
+http://localhost:8085/excustomp
+
+
+
+
 
 ## 3.7 静态资源访问
 
