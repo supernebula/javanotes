@@ -745,23 +745,180 @@ SpringBoot默认静态资源访问路径，按优先级顺序：
 ```path
 classpath:META-INF/resources    #Servlet 3.0不允许浏览器直接访问
 classpath:resources
-classpath:static
-classpath:public
+classpath:resources/static/1.html
+classpath:resources/public
 ```
+
+访问http://localhost:8085/1.html
 
 ### 3.7.2 自定义静态资源访问
 
-```prop
+这条设置不太好用
+```application.properties
 #将所有资源重新定位到/resources/**
 spring.mvc.static-path-pattern=/resources/**
 ```
 
-```prop
+```application.properties
 #自定义静态资源访问路径，支持多个,逗号隔开. 自定义指定后，SpringBoot默认静态资源路径将不再起作用
-spring.resources.static-locations=classpath:/mystatic/**,classpath:/mypublic
+spring.resources.static-locations=classpath:/mystatic,classpath:/mypublic
 ```
+自定义为mystatic后，访问不在定位到static目录，而是mystatic目录
 
 注：继承WebMvcConfigrer目录可指定绝对目录
+
+## 3.8 配置CORS实现跨域
+
+条件：必须浏览器和服务器同时支持跨域功能。
+三种方式：
+
+1. 实现WebMvcConfigurer接口
+
+```java
+/**
+ * CORS方式一
+ * spring-webmvc-5.2.0R
+ * springboot2.2.0R之前的版本，这种方式弊端，如果自定义拦截器，跨域配置会失效。执行顺序先处理拦截器，在执行请求映射逻辑
+ */
+@Configuration
+public class CorsConfig implements WebMvcConfigurer {
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")  //指定可以跨域的路径
+                .allowedHeaders("*")           //服务器允许的请求头
+                .allowedMethods("POST", "PUT", "GET", "OPTIONS", "DELETE") //服务器允许的请求方法
+                .allowCredentials(true)         //允许带cookie的跨域请求Access-Control-Allow-Credentials
+                .allowedOrigins("*")            //"*" 表示服务端允许所有的访问请求
+                .maxAge(3600);                  //预检请求的缓存时间，单位s，默认1800s
+    }
+}
+```
+
+2. 使用CoreFilter过滤器完美解决跨域问题，实现全局跨域。
+
+```java
+/**
+ * 方式二 CorsFilter过滤器,Springboot 没有自动设置，需要手动注讲CorsFilter注入容器。
+ * 过滤器先于拦截器执行
+ */
+@Configuration
+public class CorsFilterConfig {
+    @Bean
+    public FilterRegistrationBean<CorsFilter> coreFilter(){
+        FilterRegistrationBean<CorsFilter> corsFilterFilterRegistrationBean = new FilterRegistrationBean<>();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration corsConfiguration = new CorsConfiguration();
+        //服务端允许的请求头
+        corsConfiguration.addAllowedHeader("*");
+        //服务端允许的域请求来源
+        corsConfiguration.addAllowedOrigin("*");
+        //服务器允许的请求方法
+        corsConfiguration.setAllowedMethods(Arrays.asList("POST", "PUT", "GET", "OPTIONS", "DELETE"));
+        //允许带cookie的跨域请求Access-Control-Allow-Credentials
+        corsConfiguration.setAllowCredentials(true);
+        //预检请求的客户端缓存时间，单位s，默认1800s
+        corsConfiguration.setMaxAge(3600L);
+        //指定被跨域的路径
+        source.registerCorsConfiguration("/**", corsConfiguration);
+        //设置加载顺序为-1，该值越小优先级越高
+        corsFilterFilterRegistrationBean.setOrder(-1);
+        return corsFilterFilterRegistrationBean;
+    }
+}
+```
+
+3. 使用@CrossOrigin注解
+
+```java
+@RestController
+public class CorsTestIndexController {
+    /**
+     * @CrossOrigin 默认允许所有的访问请求，允许客户端所有请求头，预响应最大缓存时间1800s
+     * @return
+     */
+    @CrossOrigin
+    //在注解中配置参数，不常用
+    //@CrossOrigin(origins = {""}, allowedHeaders = {"GET", "POST"}, exposedHeaders = {""}, methods = {RequestMethod.GET, RequestMethod.POST}, allowCredentials = "cookie", maxAge = 1800)
+    @RequestMapping("/corsindex")
+    public String index(){
+        return "hello man";
+    }
+}
+```
+
+## 3.9 文件上传
+
+Springboot模式支持多文件上传。如果需要，还可更换为apache Commons FileUpload包
+
+```java
+/**
+ * 如果需要，更换为apache Commons FileUpload包
+ */
+@Configuration
+public class FileUploadConfig{
+    @Bean
+    public MultipartResolver multipartResolver() throws IOException{
+        CommonsMultipartResolver multipartResolver = new CommonsMultipartResolver();
+        return multipartResolver;
+    }
+}
+```
+
+文件上传controller
+```java
+@RestController
+public class FileUploadController{
+
+    //单文件上传
+    @PostMapping(value ="/upload")
+    public String upload(@RequestParam("file") MultipartFile file, @RequestParam("description") String description) throws Exception {
+        if (file == null || file.isEmpty()) {
+            return "文件为空";
+        }
+        //获取文件名
+        String fileName = file.getOriginalFilename();
+        System.out.println("文件名称："+fileName);  //打印文件上传名称
+        System.out.println("文件描述："+description); //打印文件上传名称
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
+        String subPath = sdf.format (new Date());
+        String basePath = subPath +"/" + fileName;
+        System.out.println("保存文件路径："+basePath);
+        File dest = new File(basePath);
+        //检测是否存在目录
+        if (!dest.getParentFile().exists()){
+            //新建文件夹
+            dest.getParentFile().mkdirs();
+        }
+        //文件保存
+        file.transferTo(dest);
+        return "SUCCESS";
+    }
+
+    //对于多个文件上传来说，只需要在方法中传入MultipartFile[数组即可，或者通过MultipartHttpServletRequest#getFiles("file")方法来获取上传的多个文件。
+    //我们直接来看代码示例，相信读者会看到熟悉的代码。
+    @PostMapping ("/uploads")
+    public String uploads(MultipartFile[]uploadFiles, HttpServletRequest request){
+    List<MultipartFile> files =((MultipartHttpServletRequest)request).getFiles("file");
+        String realPath=request.getSession().getServletContext().getRealPath("/uploadFile/");
+        System.out.println(realPath);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
+        String subPath = sdf.format (new Date());
+        for (MultipartFile uploadFile : uploadFiles){
+            File folder = new File(realPath + subPath);
+            if (folder.isDirectory()){
+                folder.mkdirs();
+                String oldName = uploadFile.getOriginalFilename();
+                try{
+                    uploadFile.transferTo(new File(folder,oldName));
+                }catch (IOException e){
+                        e.printStackTrace();
+                }
+            }
+        }
+        return "SUCCESS";
+    }
+}
+```
 
 
 
