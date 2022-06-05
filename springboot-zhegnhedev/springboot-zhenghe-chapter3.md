@@ -920,6 +920,130 @@ public class FileUploadController{
 }
 ```
 
+## 3.10 配置启动加载项
+
+SpringBoot 启动后提供的执行任务的扩展功能，并在SpringApplication#run()方法执行结束之前调用的。@Order注解设定运行顺序
+
+定义 MyCommandLineRunner
+```java
+@Component
+@Order(1)
+public class MyCommandLineRunner implements CommandLineRunner {
+    @Override
+    public void run(String ... arg) throws Exception{
+        System.out.println("MyCommandLineRunner正在执行run");
+    }
+}
+```
+
+```java
+@Component
+@Order(0)
+public class MyApplicationRunner implements ApplicationRunner {
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        System.out.println("MyApplicationRunner正在执行run");
+    }
+}
+```
+
+```java
+@SpringBootApplication
+public class CaochDemoApplication {
+    public static void main(String[] args) {
+        System.out.println("SpringBootApplication 运行run之前");
+        SpringApplication.run(CaochDemoApplication.class, args);
+        System.out.println("SpringBootApplication 运行run之后");
+    }
+}
+```
+启动后，打印日志如下：
+```log
+SpringBootApplication 运行run之前
+MyApplicationRunner正在执行run
+MyCommandLineRunner正在执行run
+SpringBootApplication 运行run之后
+```
+
+## 3.11 配置日志
+
+### 3.11.1 Log4J 2配置
+
+Log4j2 是高效\低延时的异步处理框架，通过“生产者-消费者”模式实现异步记录；
+Log4j2 异步日志性能优于Log4j、LogBack和Logging吞吐量的18倍；
+
+springboot启用log4j2，修改pom.xml文件
+```xml
+        <!--引入log4j 2依赖 开始-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-log4j2</artifactId>
+        </dependency>
+        <!--引入log4j 2依赖 结束-->
+```
+
+在resources目录下新建xml配置文件，支持log4j2.xml和log4j2-spring.xml; 不在支持以 .properties后缀的配置文件。如果自定义日志配置文件名和路径，在application.properties配置如下：
+```prop
+logging.config=classpath:log4j2.xml
+```
+log4j2.xml配置内容如下：
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<Configuration status="INFO">
+    <Appenders>
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout charset="UTF-8" pattern="$d(yyyy-MM-dd HH:mm:ss,SSS}%5 %c{1}:%L - %m%n"/>
+        </Console>
+        <File name="File" fileName="/home/logs/springboot.log">
+            <PatternLayout pattern="[%-5p] %d %c - %m%n"/>
+        </File>
+    </Appenders>
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="File"/>
+        </Root>
+    </Loggers>
+</Configuration>
+```
+
+### 3.11.2 Logback配置
+
+Logback是SpringBoot默认的日志框架，日志级别ERROR、WARN、INFO、DEBUG、TRACE。SpringBoot只会输出ERROR、WARN、INFO级别。
+
+引入依赖pom.xml
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-logging</artifactId>
+</dependency>
+```
+
+在resources目录下添加配置文件logback-spring.xml
+
+在application.properties如下配置：
+```prop
+logback.path.application=/home/logs/mohai
+logback.loglevel=INFO
+```
+
+ 
+
+
+
+
+
+
 
 
 
