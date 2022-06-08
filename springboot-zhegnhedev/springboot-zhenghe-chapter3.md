@@ -1010,28 +1010,76 @@ springboot启用log4j2，修改pom.xml文件
 ```
 
 在resources目录下新建xml配置文件，支持log4j2.xml和log4j2-spring.xml; 不在支持以 .properties后缀的配置文件。如果自定义日志配置文件名和路径，在application.properties配置如下：
-```prop
+```properties
 logging.config=classpath:log4j2.xml
 ```
-log4j2.xml配置内容如下：
+log4j2.xml最简洁配置内容如下：
 ```xml
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="INFO">
     <Appenders>
         <Console name="CONSOLE" target="SYSTEM_OUT">
-            <PatternLayout charset="UTF-8" pattern="$d(yyyy-MM-dd HH:mm:ss,SSS}%5 %c{1}:%L - %m%n"/>
+            <PatternLayout charset="UTF-8"  pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
         </Console>
-        <File name="File" fileName="/home/logs/springboot.log">
+        <File name="File" fileName="D:\\logTest\\springboot.log">
             <PatternLayout pattern="[%-5p] %d %c - %m%n"/>
         </File>
     </Appenders>
     <Loggers>
-        <Root level="info">
+        <Root level="INFO">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="File"/>
         </Root>
     </Loggers>
 </Configuration>
+```
+
+
+详细配置（未验证）
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration status="error">
+    <!--先定义所有的appender -->
+    <appenders>
+        <!--这个输出控制台的配置 -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <!--             控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch） -->
+            <ThresholdFilter level="trace" onMatch="ACCEPT" onMismatch="DENY"/>
+            <!--             这个都知道是输出日志的格式 -->
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level %class{36} %L %M - %msg%xEx%n"/>
+        </Console>
+
+        <!--文件会打印出所有信息，这个log每次运行程序会自动清空，由append属性决定，这个也挺有用的，适合临时测试用 -->
+        <!--append为TRUE表示消息增加到指定文件中，false表示消息覆盖指定的文件内容，默认值是true -->
+        <File name="log" fileName="E:/logs/log4j2.log" append="false">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level %class{36} %L %M - %msg%xEx%n"/>
+        </File>
+
+        <!--添加过滤器ThresholdFilter,可以有选择的输出某个级别以上的类别  onMatch="ACCEPT" onMismatch="DENY"意思是匹配就接受,否则直接拒绝  -->
+        <File name="ERROR" fileName="E:/logs/error.log">
+            <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout pattern="%d{yyyy.MM.dd 'at' HH:mm:ss z} %-5level %class{36} %L %M - %msg%xEx%n"/>
+        </File>
+
+        <!--这个会打印出所有的信息，每次大小超过size，则这size大小的日志会自动存入按年份-月份建立的文件夹下面并进行压缩，作为存档 -->
+        <RollingFile name="RollingFile" fileName="E:/logs/web.log"
+                     filePattern="logs/$${date:yyyy-MM}/web-%d{MM-dd-yyyy}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd 'at' HH:mm:ss z} %-5level %class{36} %L %M - %msg%xEx%n"/>
+            <SizeBasedTriggeringPolicy size="2MB"/>
+        </RollingFile>
+    </appenders>
+
+
+    <!--然后定义logger，只有定义了logger并引入的appender，appender才会生效 -->
+    <loggers>
+        <root level="trace">
+            <appender-ref ref="RollingFile"/>
+            <appender-ref ref="Console"/>
+            <appender-ref ref="ERROR" />
+            <appender-ref ref="log"/>
+        </root>
+    </loggers>
+</configuration>
 ```
 
 ### 3.11.2 Logback配置
@@ -1048,8 +1096,72 @@ Logback是SpringBoot默认的日志框架，日志级别ERROR、WARN、INFO、DE
 
 在resources目录下添加配置文件logback-spring.xml
 
+网络文档参考：[logback-spring.xml配置文件](https://blog.csdn.net/xu_san_duo/article/details/80364600)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!--Spring Boot提供了一个默认的logback配置-->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+    <!--Spring Boot也提供了一个控制台的appender-->
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+
+<!-- name的值是变量的名称，value的值时变量定义的值。通过定义的值会被插入到logger上下文中。定义后，可以使“${}”来使用变量。 -->
+    <property name="LOG_FILE" value="${LOG_FILE:-${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}/}spring.log}"/>
+
+<!--1. 输出到控制台-->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+     <!--此日志appender是为开发使用，只配置最底级别，控制台输出的日志级别是大于或等于此级别的日志信息-->
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <Pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</Pattern>
+        </layout>
+    </appender>
+
+ <!--2. 输出到文档-->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!--日志文档输出格式-->
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+<!--            <pattern>%date{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>-->
+        </encoder>
+        <file>${LOG_FILE}</file>
+         <!-- 日志记录器的滚动策略，按日期，按大小记录 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_FILE}.%d{yyyy-MM-dd}.log</fileNamePattern>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="async-rollingFile" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE" />
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>512</queueSize>
+        <includeCallerData>true</includeCallerData>
+    </appender>
+
+    <logger name="com.mohai.one" level="INFO">
+        <appender-ref ref="async-rollingFile" />
+    </logger>
+
+ <!-- 4  最终的策略：
+                 基本策略(root级) + 根据profile在启动时, logger标签中定制化package日志级别(优先级高于上面的root级)-->
+    <springProfile name="dev">
+        <root level="debug">
+            <appender-ref ref="CONSOLE" />
+            <appender-ref ref="FILE" />
+        </root>
+    </springProfile>
+
+    <springProfile name="test,prod">
+        <root level="INFO">
+            <appender-ref ref="FILE" />
+        </root>
+    </springProfile>
+
+</configuration>
+```
+
 在application.properties如下配置：
-```prop
+```properties
 logback.path.application=/home/logs/mohai
 logback.loglevel=INFO
 ```
