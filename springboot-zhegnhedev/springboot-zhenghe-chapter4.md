@@ -91,6 +91,8 @@ Druid通过DruidDataSourceAutoConfigure类完成自动化配置，配置参数�
 MyBatis支持自定义SQL、自定义存储过程、高级映射；半自动ORM框架，SQL修改和优化灵活，低耦合；
 可独立于Spring框架使用。在SpringBoot中，依赖于mybatis-spring-boot-starter模块，通过MybatisAutoConfiguration实现自动配置；
 
+
+
 首先mybatis-spring模块，讲Mybatis无缝整合进Spring,将Mybatis事务交给Spring管理。mybatis-spring模块的SqlSessionFactoryBean类利用Spring的FactoryBean接口，通过SqlSessionFactoryBean#getObject()方法完成SqlSessionFactory的创建。
 
 此外SqlSessionTemplate实现SqlSession接口，通过该类可以线程安全的使用SqlSession。因此常用SqlSessionTemplate来替代Mybatis默认的DefaultSqlSession。
@@ -101,5 +103,69 @@ MyBatis支持自定义SQL、自定义存储过程、高级映射；半自动ORM�
 MybatisAutoConfiguration类加载初始化SqlSession-Template和sqlSessionFactory对象，同时初始化@Mapper注解的扫描器AutoConfiguredMapperScannerRegistrar。
 
 用到注解，@MapperScan 、@Mapper、@Repository
+
+Mybatis的属性配置类MybatisProperties，对应的application.yml配置文件如下：
+```yml
+mybatis:
+    mapper-localtions: classpath: mappers/*.xml
+    type-aliases-package: com.example.domain.model
+    type-handlers-package: com.example.typehandler
+    configuration:
+        map-underscore-to-camel-case: true #开启驼峰转换
+        log-impl: org.apache.ibatis.logging.stdout.StdOutImpl #控制台打印 SQL
+        default-fetch-size: 100
+        default-statement-timeout: 30
+```
+
+### 4.3.2 自定义插件
+
+分页插件 mybatis-pagehelper，MyBatis允许在映射语句执行过程中对那些调用方法进行拦截。默认情况下使用插件拦截一下5个对象调用的方法, 数字为执行顺序：
+
+```java
+1. Executor(update, query, flushStatements, commit, rollback, getTransaction, close, isClosed);
+
+2. StatementHandler(prepare, parameterize, batch, update, query);
+
+3.1 ParameterHandler(getParametrObject, setParameters);
+
+3.2 ResultSetHandler(handleResultSets, handleOutoutParameters);
+
+```
+
+
+实现自定义插件，实现Interceptor接口，并通过注解@Intercepts标识拦截器，使用注解@Signature：
+
+```java
+public interface Interceptor{
+    //覆盖被拦截对象的原方法，通过Invocaton反射调用原对象的方法
+    Object intercept(Invocation invocation) throws Throwable;
+    //target 是被拦截的对象，主要是包装该对象生成一个代理对象
+    default Object plugin(Object target){
+        //默认实现逻辑，返回包装后的代理类
+        return Plugin.wrap(target, this);
+    }
+    //该方法只会在初始化的时候会被调用一次，允许配置参数
+    default void seteProperties(Properties properties){
+        //NOP
+    }
+}
+
+```
+
+实现拦截器链
+```java
+public class InterceptorChain{
+
+}
+```
+### 4.3.3 应用案例
+
+SpringBoot 实现web和数据库，并实现自定义插件。
+
+## 4.4 配置使用Spring Data JDBC
+ 
+
+
+
 
 
