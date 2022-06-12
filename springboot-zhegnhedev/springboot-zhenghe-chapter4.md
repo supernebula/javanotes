@@ -53,6 +53,7 @@ spring.datasource.hikari.connection-test-query=SELECT 1
 ```
 注：如果mysql-connector-java用的是6.0以上，需要把com.mysql.jdbc.Driver改为com.mysql.cj.jdbc.Driver，否则会告警。com.mysql.cj.jdbc.Driver需要指定时区
 
+
 配置文件后，通过改造启动类测试:
 ```java
 @SpringBootApplication
@@ -70,15 +71,36 @@ public class CaochDemoApplication implements ApplicationRunner {
     }
 }
 ```
+运行打印日志数据源名称
+
+```console
+2022-06-11 17:14:40.295  INFO 3037 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2022-06-11 17:14:40.299  INFO 3037 --- [           main] com.evol.CoachDemoSecondApplication      : Started CoachDemoSecondApplication in 4.744 seconds (JVM running for 6.028)
+2022-06-11 17:14:40.301  INFO 3037 --- [           main] com.zaxxer.hikari.HikariDataSource       : Mohai_HikariCP - Starting...
+2022-06-11 17:14:40.553  INFO 3037 --- [           main] com.zaxxer.hikari.HikariDataSource       : Mohai_HikariCP - Start completed.
+打印数据源名称
+HikariProxyConnection@729710660 wrapping com.mysql.cj.jdbc.ConnectionImpl@550de6b8
+```
 
 ## 4.2 配置Druid连接池
 
 Druid包含监控、数据库连接池、SQL解析组件、SQL监控；SpringBoot中pom.xml引入：
 
 ```xml
+        <dependency>-->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <!--SrpingBoot2.0 官方推荐数据库连接池druid 开始-->
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>druid-spring-boot-starter</artifactId>
+            <version>1.1.24</version>
+        </dependency>
+        <!--SrpingBoot2.0 官方推荐数据库连接池druid 结束-->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
         </dependency>
 ```
 Druid通过DruidDataSourceAutoConfigure类完成自动化配置，配置参数很多，示例通过yml配置如下：
@@ -208,7 +230,249 @@ public class InterceptorChain{
 SpringBoot 实现web和数据库，并实现自定义插件。
 
 ## 4.4 配置使用Spring Data JDBC
- 
+
+ Spring Data JDBC借鉴DDD，通过一个聚合根（Aggregate Root）来执行持久化操作，鼓励使用领域建模；另外Spring Data项目都依赖于spring-data-commons公共模块；
+
+ ### 4.4.1 基础配置
+ 引入依赖，在pom.xml包中引入spring-boot-starter-dta-jdbc包（包含spring-data-jdbc， 注解@EnableJdbcRepositories包含其中）。使用简单，实现一个接口实现CURD功能。
+
+ ```xml
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jdbc</artifactId>
+        </dependency>
+ ```
+
+ 通过JdbcRepositoriesAutoConfiguration实现自动化配置。通过调用CrudRepository接口提供的save()来保存聚合，实现插入和修改操作；tggg6666666666666
+
+ ### 4.4.2 应用案例
+
+修改pom.xml，引入依赖：
+```xml
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jdbc</artifactId>
+        </dependency>
+
+        <!--配置使用Spring Data JDBC-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jdbc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+```
+
+修改application.yml配置文件，新增数据库连接配置。
+```xml
+
+```
+分别新建domain、repository、service、controller,新建如下类：
+
+com.evol.domain.UserEntity
+```java
+@Table("user")
+@Data
+public class UserEntity {
+    @Id
+    private Integer id;
+    private String name;
+    private int age;
+}
+```
+
+com.evol.config.DataJdbcConfig
+```java
+@Configuration
+//定义扫描的报名
+@EnableJdbcRepositories("com.evol.repository")
+//开启事务
+@EnableTransactionManagement
+public class DataJdbcConfig {
+}
+```
+
+com.evol.controller.UserController
+```java
+@RestController
+@RequestMapping("/user")
+public class UserController{
+
+    @Autowired
+    private UserService userService;
+    @RequestMapping("/findAll")
+    public List<UserEntity>findAll(){
+        return userService.getAll();
+    }
+    @RequestMapping("/findAllByName")
+    public List<UserEntity> findAllByName(String name){
+            return userService.getAllByName(name);
+    }
+    @RequestMapping("/save")
+    public int save(@RequestBody UserEntity userEntity) {
+        return userService.insertUser(userEntity);
+    }
+    @RequestMapping("/edit")
+    public int edit(@RequestBody UserEntity userEntity)
+    {
+        return userService.updateUser(userEntity);
+    }
+
+    @RequestMapping("/delete")
+    public int delete(@RequestParam int id){
+        userService.deleteUserById(id);
+        return 1;
+    }
+}
+```
+
+com.evol.service.UserService
+```java
+@Service
+public class UserService {
+    @Autowired
+    private UserRepository userRepository;
+    //查
+    public List<UserEntity> getAll(){
+        List<UserEntity> userList = userRepository.findAll();
+        return userList;
+    }
+    //查
+    public List<UserEntity> getAllByName(String name){
+        return userRepository.findByName(name);
+    }
+
+    //增
+    @Transactional
+    public int insertUser(UserEntity userEntity){
+        return userRepository.insertNameAndAge(userEntity.getId(), userEntity.getName(), userEntity.getAge());
+    }
+    //改
+    @Transactional
+    public int updateUser(UserEntity userEntity){
+        return userRepository.updateNameAndAge(userEntity.getId(), userEntity.getName(), userEntity.getAge());
+    }
+    //删
+    @Transactional
+    public void deleteUserById(Integer id){
+        userRepository.deleteById(id);
+    }
+}
+```
+
+com.evol.repository.UserRepository
+```java
+public interface UserRepository extends CrudRepository<UserEntity, Integer> {
+    List<UserEntity> findAll();
+
+    @Modifying
+    @Query("insert into user(id, name, age) values(:id, :name, :age)")
+    int insertNameAndAge(@Param("id") Integer id, @Param("name") String name, @Param("age") int age);
+
+    @Modifying
+    @Query("update user set name = :name, age = :age where id = :id")
+    int updateNameAndAge(@Param("id") Integer id, @Param("name") String name, @Param("age") int age);
+
+    @Query("SELECT * FROM user u WHERE u.name = :name")
+    List<UserEntity> findByName(@Param("name") String name);
+}
+```
+
+## 4.5 配置使用Spring Data JPA
+
+JPA 全称Java Persistence API，可以不用谢SQL实现增删改查， 是基于Hibernate实现。Hibernate 现在开发不常用，暂不展开。
+
+```java
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+```
+
+用到的配置类JpaProperties。
+
+## 4.6事务管理配置
+
+事务 ，处理一笔交易执行的多个持久化操作。事务的4个基本特性， 原子性Atomicity、一致性Consistency、隔离性Isolation、持久性Durability简称ACID.
+如果不考虑事务的隔离性，一般会出现3类现象，大致分类脏读、不可重复读、幻读。
+脏读：发生同一事务时，一个事务读取另一个事务修改但为提交的数据。
+幻读：也称虚读，同一事务时，多次执行同一查询返回的结果不同。
+
+Spring中，事务的实现有两种，编程式事务和声明式事务。
+声明式事务，基于AOP实现（@Transactional注解），还需在配置类中加入#EnableTransactionManagement注解实现Spring自动扫描。 @Transactional可以标注在接口、接口方法、类和类方法中。
+编程时事务，则会入侵业务代码。
+
+涉及的总要类，事务管理器接口PlatformTransactionManager、事务属性接口TransactionDefinition。
+
+注：@Transactional对父类继承过来的方法无效，无法通过代理类识别，Spring建议在具体的实现类或被public修饰的方法中使用该注解。默认情况Spring框架的事务管理只会对运行时为检查异常的情况进行标记，发生次异常事务会回滚。
+
+可以使用@Transactional注解定义传播机制、隔离级别和超时时间、还可控制checked Exception、unchecked Exception异常是否回滚。
+
+@Transactional注解定义如下：
+
+```java
+import org.springframework.core.annotation.AliasFor;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import java.lang.annotation.*;
+
+@Target({ElementType.TYPE, ElementType.METHOD|)
+@Retention(RetentionPolicy.RUNTIME)
+@Inherited
+@Documented
+public @interface Transactional {
+    //和transactionManager互为别名
+    @AliasFor("transactionManager")
+    String value() default "";
+    //指定事务管理器的限定符值
+
+    @AliasFor("value")
+    String transactionManager() default "";
+
+    //事务传播类型
+    Propagation propagation() default Propagation.REQUIRED;
+
+    //事务隔离级别
+    Isolation isolation() default Isolation.DEFAULT;
+
+    /**事务的超时时间，单位为s
+    * {@link org.springframework.transaction.TransactionDefinition}
+     */
+    int timeout() default TransactionDefinition.TIMEOUT_DEFAULT;
+
+    //如果事务是只读的，允许在运行时进行相应优化
+    boolean readonly() default false;
+
+    //定义零个或多个异常，必须是Throwable的子类，指示哪些异常类型导致事务回滚
+    Class<? extends Throwable>[] rollbackFor() default {};
+
+    //定义零个或多个异常名称，必须是hrowab1e的子类，指示哪些异常类型导致事务回滚
+    String[] rollbackForclassName() default {};
+
+    //定义零个或多个异常，必须是Throwab1e的子类，指示哪些异常类型不导致事务回滚
+    Class<? extends Throwable>[] noRollbackFor() default {};
+
+    //定义零个或多个异常名称，必须是hrowab1e的子类，指示哪些异常类型不导致事务回滚
+    String[] noRollbackForClassName() default {};
+}
+```
+
+## 4.7多数据源配置
+
+应对分库、分表的系统业务场景，利用多数据源在项目中实现多数据源配置、实现动态切换、读写分离的操作。
+
+Spring Boot 2.0版本之后，配置多数据源，需要对每个数据源的所有配置进行单独配置，否则不会生效。
+Spring支持多数据源配置，可以通过集成AbstractRoutingDataSource抽象类重写determineCurrentLoopupKey()方法，然后从当前线程中获取设置的数据源连接池。
+
+AbstractRoutingDataSource继承了AbstractDataSource提供的获取数据源链接的方法。
+
+注：配置多数据源后，事务问题可能会失效。由于AbstractRoutingDataSource只支持单个数据库事务，所以每次要在切换数据源之后开启一个事务。涉及两个及以上数据源事务时，需采用分布式事务方案、
+
 
 
 
