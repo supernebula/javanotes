@@ -268,10 +268,28 @@ SpringBoot 实现web和数据库，并实现自定义插件。
 ```
 
 修改application.yml配置文件，新增数据库连接配置。
-```xml
-
+```yml
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/praxis_example?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&useSSL=true&serverTimezone=Asia/Shanghai&zeroDateTimeBehavior=convertToNull
+    username: root
+    password: 123456
 ```
+
+
 分别新建domain、repository、service、controller,新建如下类：
+
+实例数据库脚本，user表：
+```sql
+CREATE TABLE `user` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '编号',
+  `name` varchar(50) NOT NULL COMMENT '名称',
+  `age` int(11) NOT NULL DEFAULT '0' COMMENT '年龄',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4;
+```
+
 
 com.evol.domain.UserEntity
 ```java
@@ -421,7 +439,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import java.lang.annotation.*;
 
-@Target({ElementType.TYPE, ElementType.METHOD|)
+@Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
@@ -471,7 +489,18 @@ Spring支持多数据源配置，可以通过集成AbstractRoutingDataSource抽�
 
 AbstractRoutingDataSource继承了AbstractDataSource提供的获取数据源链接的方法。
 
-注：配置多数据源后，事务问题可能会失效。由于AbstractRoutingDataSource只支持单个数据库事务，所以每次要在切换数据源之后开启一个事务。涉及两个及以上数据源事务时，需采用分布式事务方案、
+注：配置多数据源后，事务问题可能会失效。由于AbstractRoutingDataSource只支持单个数据库事务，所以每次要在切换数据源之后开启一个事务。涉及两个及以上数据源事务时，需采用分布式事务方案。
+
+参考：[AbstractRoutingDataSource -- Spring提供的轻量级数据源切换方式](https://www.jianshu.com/p/b158476dd33c)
+
+具体步骤：
+
+1. 数据源动态切换
+AbstractRoutingDataSource提供了程序运行时动态切换数据源的方法，在dao类或方法上标注需要访问数据源的关键字，路由到指定数据源，获取连接。
+
+2. 数据源切换方法
+维护一个static变量datasourceContext用于记录每个线程需要使用的数据源关键字。并提供切换、读取、清除数据源配置信息的方法。
+
 
 
 
