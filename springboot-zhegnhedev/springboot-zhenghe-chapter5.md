@@ -219,6 +219,88 @@ Swagger 常用注解
 @AuthorizationScope //作用于方法中，描述OAuth2.0授权作用域
 ```
 
+Spring Boot集成swagger的步骤。
+
+新建包config、controller、domain
+
+配置application.properties
+```properties
+server.port=8090
+spring.swagger.enable=true
+```
+
+配置类
+```java
+@Configuration
+@EnableSwagger2 //声明启动Swagger2
+//声明属性是否可用
+@ConditionalOnProperty(name = "spring.swagger.enable", havingValue = "true", matchIfMissing = true)
+public class SwaggerConfig {
+    //注入Docket, 添加扫描的包路径
+    @Bean
+    public Docket customDocket(){
+        return new Docket(DocumentationType.SWAGGER_2)
+                //ApiInfo用户描述API文件的基础信息
+                .apiInfo(new ApiInfoBuilder()
+                        //标题
+                        .title("Swagger2 文档")
+                        //描述
+                        .description("Rest风格文档")
+                        //版本号
+                        .version("1.0.0")
+                        .build()).select()
+                //定义扫描的Swagger接口包路径
+                .apis(RequestHandlerSelectors.basePackage("com.evol.swagg.controller"))
+                //所有路径都满足这个条件
+                .paths(PathSelectors.any()).build();
+    }
+}
+```
+
+Controller标记api文档
+```java
+@RestController
+@Api("页面首页")
+public class IndexController {
+
+    @ApiOperation("欢迎页面")
+    @GetMapping("/index")
+    @ApiImplicitParam(name="name",value="姓名", dataType="String")
+    public String index(String name){
+        return "Welcome " + name + " +to my site";
+    }
+
+    @ApiOperation("更新用户信息")
+    @PostMapping("/updateUserInfo")
+    public UserDTO updateUserInfo(@RequestBody @ApiParam(name="用户对象", value = "传入json格式", required = true) UserDTO user){
+        UserDTO userDTO = new UserDTO();
+        userDTO.setId(user.getId());
+        userDTO.setUsername ("test");
+        userDTO.setLoginTime(new Date());
+        return userDTO;
+    }
+}
+```
+
+实体类标记文档
+```java
+@ApiModel(description = "用户对象user")
+@Data
+public class UserDTO {
+    @ApiModelProperty(value="用户id")
+    private int id;
+    @ApiModelProperty(value="用户名",name="username")
+    private String username;
+    @ApiModelProperty(value="登录时间")
+    @JsonFormat(pattern ="yyyy-MM-dd HH:mm:ss")
+    private Date loginTime;
+}
+```
+
+以上启动应用访问
+
+http://127.0.0.1:8090/swagger-ui.html
+
 
 
 
