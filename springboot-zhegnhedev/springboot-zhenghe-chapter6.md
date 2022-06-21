@@ -245,7 +245,7 @@ Redis有3种集群方式：
 sentinel(哨兵模式)生产环境，可实现高可用。
 
 3. cluster（集群）模式。
-
+ 
 如果业务量增长，可以通过cluster-enable属性开启高可用。
 
 sentinel(哨兵模式)、cluster（集群）模式的application.properties配置如下：
@@ -268,6 +268,96 @@ spring.redis.cluster.max-redirects
 
 注：哨兵对应的配置类，RedisSentinelConfiguration.
 集群模式对应的配置类，RedisClusterConfiguration
+
+
+## 6.3 集成MongoDB数据库
+
+Spring Data MongoDB是 Spring Data的子项目。以POJO为中心，通过MongoTemplate模板类，实现文档和POJO对象的映射。
+
+MongoTemplate常用命令:
+
+```code
+如果数据库不存在，则创建数据库，否则切换到指定数据库
+use demo
+#查看当前数据库名
+db
+#查看所有数据库，新建的数据库不会立即出现在列表中，需要向库中插入一条数据
+show dbs
+#查看数据库版本
+db.version()
+#删除当前的数据库，注意删除前可用db命令查看数据库名
+db.dropDatabase()
+#创建集合，指定USER为集合名称，区分大小写
+db.createCollection("USER")
+#获取指定名称的聚集集合
+db.getCollection("USER")
+#显示当前DB中所有聚集索引的状态
+db.printCollectionstats()
+#对聚集集合重命名
+db.USER.renameCollection ("user")
+#以下两个命令都可用于查询已有集合
+show collections
+show tables
+#删除集合，其中，col1ection表示要删除的集合名，如果删除成功则返回true
+db.collection.drop()
+#插入文档，在3,2版本后新增了db.col1 ection,insert0ne0和db.collection.insertMany0,分别对应插入一条和插入多条，若插入的数据主键已存在，则会抛出DuplicateKeyException异常
+db.USER.insert(("name":"test"))
+#如果主键已存在则更新数据，如果不存在就插入数据，在新版中已经废弃db.USER.save (("name":"admin"))#通过默认条件查询集合文档
+db.USER.find()
+#如果需要以格式化的方式显示所有文档，则可以使用pretty()方法
+db.USER.find().pretty()
+#更新文档，语法如下
+#db.collection.update(
+#<query>,
+<update>,update的查询条件，等同于SQL的update语句中where后面的部分
+的部分  #update的对象和一些更新的操作符，等同于SQL的update语句中set后面#{
+upsert:<boolean>,#可选，默认是false,判断是否插入objNew,true为插入，false为不插入
+可选，默认是false,表示只更新匹配的第一条记录，如果设置为true,则multi:<boolean>,
+#则根据条件查出多条记录并全部更新
+writeConcern:<document>#可选，抛出异常的级别
+井)
+db.USER.update({"name":"test"),{$set:("name":"test2")))
+#删除文档，语法如下
+#db.collection.remove
+<query>.,#可选，删除文档的条件 
+
+#可选，默认是fa1se,表示删除所有匹配条件的文档，如果设为true,则只删除一个文档#  justOne:<boolean>,
+井  writeConcern:<document>  #可选，抛出异常的级别
+#
+#)
+db.USER.remove ({"name":"test2"))
+
+```
+
+### MongoDB应用案例
+
+引入依赖pom.xml
+```xml
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+```
+
+MongoDB配置类MongoProperties，MongoDataConfiguration、MongoDbFactoryConfiguration、MongoDbFactoryDependentConfiguration。
+
+1. 配置application.properites
+```properites
+#MongoDB配置
+spring.data.mongodb.uri=monggodb://localhost/demo
+spring.data.mongodb.database=demo
+```
+
+2. 常见domain包和实体类
+
+```java
+
+```
+
+
+
+
+
 
 
 
