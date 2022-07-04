@@ -293,3 +293,27 @@ public class IndexController {
 ```
 
 
+## 9.4 消息中间件之Kafka
+
+Kafka 高性能、跨语言、分布式式发布订阅消息队列系统，理念不同，不支持AMQP。下载kafka [http://kafka.apache.rog](http://kafka.apache.rog)
+
+注：使用Kafka会有消息重复消费的问题.
+
+### 9.4.1 kafka的基本概念
+
+主题（topic）和 日志（Log），topic表示主题，是发布消息的类别名，可以用来区分业务系统。一个topic可以有0~N个消费者。每个Topic在kafka集群中维护一个分区日志。
+
+### 9.4.2 Kafka自动配置
+
+在springboot中，kafka 相关的类，KafkaAutoConfiguration（自动配置类中初始化了KafkaTemplate、ConsumerFactory、ProducerFactory、KafkaTranactionManager）。 KafkaProperties是其配置类。
+
+
+### 9.4.3 Kafka应用案例
+
+1. 使用Kafka的测试组件，使用@EnbeddedKafka，引入pom.xml依赖。
+
+<de>
+
+
+
+
