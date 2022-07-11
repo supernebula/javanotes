@@ -312,7 +312,103 @@ Kafka 高性能、跨语言、分布式式发布订阅消息队列系统，理�
 
 1. 使用Kafka的测试组件，使用@EnbeddedKafka，引入pom.xml依赖。
 
-<de>
+
+
+## 9.5消息中间件RocketMQ
+
+### 9.5.1 RocketMQ的基本概念
+
+RocketMQ中基本的消息模型主要由Producer、Broker、Consumer三部分组成。Producer负责生产消息，由业务系统创建，并把消费发送到Broker服务器。
+
+RocketMQ提供多种发送方式：同步发送、异步发送、顺序发送、单项发送等。同步和异步发送需要Broker服务器返回确认消息，其他不需要。
+
+官方提供的部署方案中默认给出3中方式：2m-noslave(双主无从模式)、2m-2s-async（双主双从,异步复制模式）、2m-2s-sync（双主双从，同步双写模式）。
+
+Broker存储多个Topic消息；Message Queue用于存储消息的物理地址；ConsumerGroup消费者组即同一类Consumer示例的集合；ProducerGroup生产者组，即同一类Producer同一类消息；
+
+RocketMQ在4.3.0及以后支持分布式事务消息（才用2PC思想提交事务消息，同时增加了一个补偿逻辑处理二阶段提交或者失败消息）。
+
+### 9.5.2 RocketMQ自动配置
+
+在SpringBoot中使用RocketMQ, pom.xml引入依赖：
+
+```xml
+<!--引入RocketMQ开始-->
+ <dependency>
+    <groupId>org.apache.rocketmq</groupId>
+    <artifactId>rocketmq-spring-boot-starter</artifactId>
+    <version>4.7.1</version>
+</dependency>
+
+<dependency>
+    <groupId>org.apache.rocketmq</groupId>
+    <artifactId>rocketmq-client</artifactId>
+    <version>4.7.1</version>
+</dependency>
+<!--引入RocketMQ结束-->
+```
+
+#### 注解
+
+1. 配置客户端消息监听器注解 @RocketMQMessageListener
+使用案例如下：
+
+2. 配置本地事务监听器 @RocketMQTransactionListener。其需要自定义配置类，实现RocketMQLocalTransactionListener接口，并使用@RocketMQTransactionListener注解标记。
+
+
+### 9.5.3 RocketMQ应用案例
+
+配置系统环境变量ROCKETMQ_HOME
+
+启用rocketmq
+```shell
+start mqnamesrv.cmd
+start mqbroker.cmd -n 127.0.0.1:9876
+```
+
+Rocketmq的官方控制台 RocketMQ-Console，下载 https://codeload.github.com/apache/rocketmq-externals/zip/master 。
+进入rocketmq-externals-master\rocketmq-console目录下，找到application.properties文件，修改server.port参数（默认为8080），避免冲突，改掉。
+重新进入rocektmqconsole，从新打包：
+```shell
+mvn clean package -DskipTests
+```
+
+1. 在SpringBoot中pom.xml引入依赖：
+
+```xml
+<!--引入RocketMQ开始-->
+ <dependency>
+    <groupId>org.apache.rocketmq</groupId>
+    <artifactId>rocketmq-spring-boot-starter</artifactId>
+    <version>4.7.1</version>
+</dependency>
+
+<dependency>
+    <groupId>org.apache.rocketmq</groupId>
+    <artifactId>rocketmq-client</artifactId>
+    <version>4.7.1</version>
+</dependency>
+<!--引入RocketMQ结束-->
+```
+
+在项目中新建两个模块，分别是生产者模块和消费者模块，都引入以上RocketMQ的相关依赖。
+
+2. 以下消费者模块中的配置，application.properties
+
+```properties
+server.port=8081
+spring.application.name=rocketmq-consume-demo
+#消费者相关配置
+rocketmq.name-server=localhost:9876
+#自定义主题名称
+evol.rocketmq.topic=test-topic-1
+evol.rocektmq.msgExtTopic=test-message-ext-topic
+```
+
+3. 编写监听器
+
+
+
 
 
 
