@@ -260,6 +260,12 @@ public class DirectReceiver {
         System.out.println("接收消息>>>"+new String(message.getBody()));
     }
 
+    @RabbitListener(bindings = {@QueueBinding(value = @Queue("my-queue"), exchange = @Exchange("my-exchange"), key = {"my-routing-key"})})
+    public void receiveMsg2(String message){
+        System.out.println("接收消息>>>"+ message);
+        //todo json反序列化， 业务逻辑等
+    }
+
 }
 ```
 
