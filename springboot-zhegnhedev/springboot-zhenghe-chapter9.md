@@ -415,6 +415,20 @@ evol.rocektmq.msgExtTopic=test-message-ext-topic
 
 
 
+### 安装RocketMQ 和 管理工具 rocketmq-dashboard
+
+下载地址（包含安装步骤和命令）：
+
+https://rocketmq.apache.org/docs/quick-start/
+
+https://github.com/apache/rocketmq-dashboard
+
+启动后
+
+
+
+
+
 
 
 #### SpringBoot集成RocketMQ案例
