@@ -417,5 +417,166 @@ evol.rocektmq.msgExtTopic=test-message-ext-topic
 
 
 
+#### SpringBoot集成RocketMQ案例
+
+
+
+##### 安装
+
+
+下载：https://rocketmq.apache.org/docs/quick-start/
+
+按照官网安装rocketmq， 修改/rocketmq-4.9.4/conf/2m-noslave/broker-a.properties 文件，组件以下内容：
+```properties
+#rocketmq部署的服务IP
+namesrvAddr=192.168.0.39:9876
+```
+配置完成。
+
+注：macos安装会启动失败，centos7安装没这个问题。
+
+下载 ： https://github.com/apache/rocketmq-dashboard
+
+按照官网步骤源码安装 rocketmq-dashboard， 修改其端口为9091 （默认的8080容易被占用）。
+浏览器访问 http://192.168.0.39:9091/， NameServerAddressList添加rocketmq节点 192.168.0.39:9876
+，配置完成。
+
+
+
+
+##### 实例代码
+
+参考： https://cloud.tencent.com/developer/article/2000243
+
+
+1. 引入依赖pom.xml
+```xml
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
+            <version>2.2.2</version>
+        </dependency>
+```
+
+
+
+2. 配置属性配置application.properties
+```properties
+server.port=8082
+spring.application.name=coach-demo-mq
+#rocketmq相关配置，注意rocketmq-spring-boot-starter 2.2以上是nameServer （2.2之前是name-server）
+rocketmq.nameServer=192.168.0.39:9876
+rocketmq.producer.group=my-group
+```
+
+注：如果属性设置错误，项目会启动失败，报错：".........RocketMQTemplate‘ that could not be found.
+
+3. 编写发送、接受、DTO类
+
+com.evol.rocketmq.DemoOrderDto， DTO类
+
+```java
+@Data
+@AllArgsConstructor
+public class DemoOrderDto implements Serializable {
+
+    private String orderNo;
+
+    private Integer amount;
+
+    private Date createTime;
+}
+```
+
+定义RocketMQ的TOPIC，放在常量里 com.evol.rocketmq.TopicConstant
+```java
+public class TopicConstant {
+    public static final String DEMO_TOPIC1 = "demo-topic1";
+}
+```
+
+com.evol.rocketmq.RocketMQReceiver, 消费者类
+```java
+@Component
+@RocketMQMessageListener(topic = TopicConstant.DEMO_TOPIC1, //topic主题
+        consumerGroup = "demo-group1",          //消费组
+        messageModel = MessageModel.CLUSTERING,
+        consumeMode = ConsumeMode.ORDERLY)
+@Slf4j
+public class RocketMQReceiver implements RocketMQListener<String> {
+
+    @Override
+    public void onMessage(String message) {
+        log.info("接受到消息：{}", message);
+    }
+}
+```
+
+com.evol.rocketmq.RocketMQSender,消息发送(生产)者
+```java
+@Component
+@Slf4j
+public class RocketMQSender {
+
+    @Autowired
+    RocketMQTemplate rocketMQTemplate;
+
+    /**
+     *
+     * @param topic @link TopicConstant.DEMO_TOPIC1
+     * @param message
+     */
+    public void sendMessage(String topic, String message){
+        SendResult result = rocketMQTemplate.syncSend(topic, message);
+        log.info("发送结果：{}", JSON.toJSONString(result));
+    }
+
+    public <T extends Serializable> SendStatus sendDto(String topic, T dto){
+        SendResult result = rocketMQTemplate.syncSend(topic, JSON.toJSONString(dto));
+        log.info("发送结果：{}", JSON.toJSONString(result));
+        return result.getSendStatus();
+    }
+}
+```
+
+com.evol.controller.DemoMQController , 测试用的controller，访问action发送消息
+
+```java
+@RestController
+public class DemoMQController {
+
+    @Autowired
+    private RocketMQSender rocketMQSender;
+
+    @GetMapping("/testSendMsg")
+    public String testSendMessage(@RequestParam(required = false) String msg){
+        if(StringUtils.isBlank(msg)){
+            msg = "Hello World";
+        }
+        rocketMQSender.sendMessage(TopicConstant.DEMO_TOPIC1, msg);
+        return "ok";
+    }
+
+    @GetMapping("/testSendObj")
+    public String testSendDto(){
+        DemoOrderDto demoOrderDto = new DemoOrderDto("OR202204051220", 100, new Date());
+        Object result = rocketMQSender.sendDto(TopicConstant.DEMO_TOPIC1, demoOrderDto);
+        return "ok" + result;
+    }
+}
+
+```
+
+浏览器访问测试：
+http://localhost:8082/testSendObj
+
+http://localhost:8082/testSendMsg
+
+测试成功。
+
+
+
+
+
 
 
