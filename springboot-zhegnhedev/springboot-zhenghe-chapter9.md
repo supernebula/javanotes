@@ -589,6 +589,61 @@ http://localhost:8082/testSendMsg
 测试成功。
 
 
+4. 扩展发送和消费待tag的消息
+
+发送方法：rocketMQTemplate.syncSend(destination, Object message)，destination的格式是 "topic:tag"
+
+案例代码，com.evol.rocketmq.RocketMQSender
+```java
+@Component
+@Slf4j
+public class RocketMQSender {
+    public void sendTagMessage(String topic, String tag, String message){
+        SendResult result = rocketMQTemplate.syncSend(topic + ":" + tag, message);
+        log.info("发送结果：{}", JSON.toJSONString(result));
+    }
+}
+```
+
+```java
+
+@RestController
+public class DemoMQController {
+    @GetMapping("/testSendTagMsg")
+    public String testSendTagMessage(@RequestParam(required = false) String msg){
+        if(StringUtils.isBlank(msg)){
+            msg = "Hello World";
+        }
+        rocketMQSender.sendTagMessage(TopicConstant.DEMO_TOPIC1, "tag1", msg);
+        return "ok";
+    }
+}
+```
+
+消费代码，注解@RocketMQMessageListener的 selectorExpression生命tag。实例代码如下：
+
+```java
+    @Service
+    @RocketMQMessageListener(topic = TopicConstant.DEMO_TOPIC1, consumerGroup = "demo-group1", selectorExpression =
+            "tag1 || tag2")
+    public class RocketMqUpdateBalanceEventConsumer2 implements RocketMQListener<String>{
+
+
+        /**
+         * 封装过，无异常会自动ack，有异常mq重发
+         * @param msg
+         */
+        @SneakyThrows
+        @Override
+        public void onMessage(String msg) {
+            System.out.println("接受到消息为:RocketMqUpdateBalanceEventConsumer2:" + msg);
+
+            //todo 关于orderCancelParam的业务逻辑；
+        }
+    }
+```
+
+
 
 
 
